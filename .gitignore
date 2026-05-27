@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+report.xlsx
+data/audio/
+data/input/
+data/transcripts/
+output/report_filled.xlsx
