@@ -3,6 +3,7 @@ import openpyxl
 from pathlib import Path
 from datetime import datetime
 
+
 def load_report(report_path: Path):
     workbook = openpyxl.load_workbook(report_path)
 
