@@ -2,7 +2,7 @@ from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 from config import CREDENTIALS_PATH, TOKEN_PATH
 
@@ -59,3 +59,17 @@ def download_file(service, file_id, destination_path):
         while not done:
             status, done = downloader.next_chunk()
             print(f"Download progress: {int(status.progress() * 100)}%")
+
+
+def upload_file_to_folder(service, local_path, target_folder_id, mime_type="text/plain"):
+    file_metadata = {
+        "name": local_path.name,
+        "parents": [target_folder_id],
+    }
+    media = MediaFileUpload(str(local_path), mimetype=mime_type)
+
+    return service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id, name",
+    ).execute()
