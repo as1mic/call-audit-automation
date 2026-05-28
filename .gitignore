@@ -1,6 +1,8 @@
 .env
 __pycache__/
 *.pyc
+credentials.json
+token.json
 report.xlsx
 data/audio/
 data/input/
