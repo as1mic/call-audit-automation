@@ -25,8 +25,8 @@ CREDENTIALS_PATH = BASE_DIR / "credentials.json"
 TOKEN_PATH = BASE_DIR / "token.json"
 
 
-SOURCE_FOLDER_ID = "1dpKG-eaFg2glOovkI4sYgLyPo3mW9Ilg"
-TARGET_FOLDER_ID = "1rpiAWpJRbouG2X27KJVWlBmAkpHN2tA9"
+SOURCE_FOLDER_ID = os.getenv("SOURCE_FOLDER_ID", "")
+TARGET_FOLDER_ID = os.getenv("TARGET_FOLDER_ID", "")
 
 
 TOP_JOBS_PATH = REFERENCE_DIR / "top_jobs.txt"
