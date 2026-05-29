@@ -4,6 +4,7 @@ from copy import copy
 from datetime import datetime
 from pathlib import Path
 from openpyxl.styles import Font
+import json
 
 
 DATE_COLUMN = 1
@@ -150,12 +151,24 @@ def write_text_phone(sheet, row_number: int, phone: str):
 
 
 def write_analysis_to_row(sheet, row_number, metadata: dict, analysis_result):
-    flags = analysis_result.get("flags", [])
+    def to_cell_value(value):
+        if value is None:
+            return ""
+        if isinstance(value, (list, tuple, set)):
+            return ", ".join(str(v) for v in value)
+        if isinstance(value, dict):
+            try:
+                return json.dumps(value, ensure_ascii=False)
+            except Exception:
+                return str(value)
+        return value
+
     has_booking = analysis_result.get("has_booking", False)
     manager_score = analysis_result.get("manager_score", 0)
+    manager_issue = analysis_result.get("manager_issue", False)
 
     sheet.cell(row=row_number, column=DATE_COLUMN).value = metadata.get("date", "")
-    sheet.cell(row=row_number, column=REQUEST_TYPE_COLUMN).value = analysis_result.get("request_type", "")
+    sheet.cell(row=row_number, column=REQUEST_TYPE_COLUMN).value = to_cell_value(analysis_result.get("request_type", ""))
     write_text_phone(sheet, row_number, metadata.get("phone", ""))
 
     sheet.cell(row=row_number, column=MANAGER_COLUMN).value = analysis_result.get("manager_name", "")
@@ -165,20 +178,20 @@ def write_analysis_to_row(sheet, row_number, metadata: dict, analysis_result):
     sheet.cell(row=row_number, column=MILEAGE_COLUMN).value = analysis_result.get("mileage_score", 0)
     sheet.cell(row=row_number, column=DIAGNOSTIC_OFFER_COLUMN).value = analysis_result.get("diagnostic_offer_score", 0)
     sheet.cell(row=row_number, column=PREVIOUS_REPAIRS_COLUMN).value = analysis_result.get("previous_repairs_score", 0)
-    sheet.cell(row=row_number, column=BOOKING_DATE_COLUMN).value = ""
+    sheet.cell(row=row_number, column=BOOKING_DATE_COLUMN).value = analysis_result.get("booking_date", "")
     sheet.cell(row=row_number, column=GOODBYE_COLUMN).value = analysis_result.get("goodbye_score", 0)
-    sheet.cell(row=row_number, column=TOP_JOB_COLUMN).value = analysis_result.get("top_job", "")
+    sheet.cell(row=row_number, column=TOP_JOB_COLUMN).value = to_cell_value(analysis_result.get("top_job", ""))
     sheet.cell(row=row_number, column=TOP_JOB_OK_COLUMN).value = "Так" if analysis_result.get("top_job_ok", 0) else "Ні"
-    sheet.cell(row=row_number, column=RECOMMENDATION_COLUMN).value = ", ".join(flags)
-    sheet.cell(row=row_number, column=RESULT_COLUMN).value = "Є запис" if has_booking else "Немає запису"
+    sheet.cell(row=row_number, column=RECOMMENDATION_COLUMN).value = ", ".join(analysis_result.get("flags", []))
+    sheet.cell(row=row_number, column=RESULT_COLUMN).value = "Заброньовано" if has_booking else "Не заброньовано"
     sheet.cell(row=row_number, column=SCORE_COLUMN).value = manager_score
-    sheet.cell(row=row_number, column=PARTS_COLUMN).value = ""
+    sheet.cell(row=row_number, column=PARTS_COLUMN).value = to_cell_value(analysis_result.get("parts", ""))
     sheet.cell(row=row_number, column=TOTAL_SCORE_COLUMN).value = manager_score
 
     comment_cell = sheet.cell(row=row_number, column=COMMENT_COLUMN)
-    comment_cell.value = analysis_result.get("comment", "")
+    comment_cell.value = to_cell_value(analysis_result.get("comment", ""))
 
-    if flags:
+    if manager_issue:
         comment_cell.font = Font(color="FF0000")
     else:
         comment_cell.font = Font(color="000000")

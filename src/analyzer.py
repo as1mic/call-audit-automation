@@ -25,8 +25,12 @@ BOOKING_KEYWORDS = [
     "коли можна",
     "можна під'їхати",
     "можно подъехать",
+    "можна до вас приїхати",
+    "можна у вас приїхати",
+    "приїхати на діагностику",
     "під'їхати завтра",
     "завтра на",
+    "на 10 можна",
 ]
 
 CAR_ALREADY_IN_SERVICE_KEYWORDS = [
@@ -88,6 +92,19 @@ PREVIOUS_REPAIR_KEYWORDS = [
     "обслуговували",
 ]
 
+PART_KEYWORDS = [
+    "помпа",
+    "фари",
+    "бензобак",
+    "масло",
+    "олива",
+    "фільтр",
+    "радиатор",
+    "радіатор",
+    "амортизатор",
+    "кнопка",
+]
+
 DIAGNOSTIC_KEYWORDS = [
     "комплексна діагностика",
     "комплексная диагностика",
@@ -96,6 +113,14 @@ DIAGNOSTIC_KEYWORDS = [
 ]
 
 JOB_KEYWORDS = {
+    "Мийка / чистка деталі": [
+        "чистка радіатора",
+        "чистка радиатора",
+        "честка радіатора",
+        "чистите радіатор",
+        "мийка",
+        "мойка",
+    ],
     "Комп'ютерна діагностика": [
         "комп'ютерна діагностика",
         "компьютерная диагностика",
@@ -109,6 +134,12 @@ JOB_KEYWORDS = {
         "масляный фильтр",
         "заміна мастил",
         "замена мастил",
+        "то зробити",
+        "то запис",
+        "на то запис",
+        "плану вто",
+        "плану то",
+        "заміна матла",
     ],
     "Комплексна діагностика": [
         "комплексна діагностика",
@@ -138,6 +169,8 @@ JOB_KEYWORDS = {
         "передній амортизатор",
         "передние амортизаторы",
         "амортизатор перед",
+        "амортизаторам",
+        "амортизатори",
     ],
     "Заміна амортизатора зд.": [
         "задній амортизатор",
@@ -160,12 +193,6 @@ JOB_KEYWORDS = {
     "Заміна оливи АКПП": [
         "олива акпп",
         "масло акпп",
-    ],
-    "Мийка / чистка деталі": [
-        "чистка радіатора",
-        "чистка радиатора",
-        "мийка",
-        "мойка",
     ],
     "Зняття / встановлення повітряного патрубка": [
         "повітряний патрубок",
@@ -215,6 +242,27 @@ def find_top_jobs_in_transcript(transcript: str) -> list[str]:
 
 def detect_booking(transcript: str) -> bool:
     return has_any_keyword(transcript, BOOKING_KEYWORDS)
+
+
+def detect_booking_date(transcript: str, has_booking: bool) -> str:
+    text = normalize_text(transcript)
+
+    match = re.search(r"завтра на\s+(\d{1,2})", text)
+    if match:
+        hour = int(match.group(1))
+        if 8 <= hour <= 20:
+            return f"завтра {hour}:00"
+
+    match = re.search(r"на\s+(\d{1,2})\s+можна", text)
+    if match:
+        hour = int(match.group(1))
+        if 8 <= hour <= 20:
+            return f"{hour}:00"
+
+    if has_booking:
+        return "не вказано"
+
+    return ""
 
 
 def detect_request_type(transcript: str) -> str:
@@ -277,6 +325,38 @@ def detect_previous_repairs_question(transcript: str) -> int:
     return 1 if has_any_keyword(transcript, PREVIOUS_REPAIR_KEYWORDS) else 0
 
 
+def detect_parts(transcript: str) -> str:
+    parts = []
+    transcript_text = normalize_text(transcript)
+
+    for keyword in PART_KEYWORDS:
+        if normalize_text(keyword) in transcript_text:
+            parts.append(keyword)
+
+    return ", ".join(parts[:3])
+
+
+def detect_manager_issue(
+    greeting_score: int,
+    body_score: int,
+    year_score: int,
+    mileage_score: int,
+    diagnostic_offer_score: int,
+    previous_repairs_score: int,
+    goodbye_score: int,
+    top_job_ok: int,
+    flags: list[str],
+    has_booking: bool,
+) -> bool:
+    if body_score == 0:
+        return True
+    if mileage_score == 0:
+        return True
+    if top_job_ok == 0:
+        return True
+    return False
+
+
 def build_comment(transcript: str) -> str:
     comment_parts = []
     flags = find_flags(transcript)
@@ -316,6 +396,19 @@ def analyze_transcript(transcript: str, metadata: dict) -> dict[str, object]:
         + top_job_ok
     )
 
+    manager_issue = detect_manager_issue(
+        greeting_score,
+        body_score,
+        year_score,
+        mileage_score,
+        diagnostic_offer_score,
+        previous_repairs_score,
+        goodbye_score,
+        top_job_ok,
+        flags,
+        has_booking,
+    )
+
     return {
         "call_summary": transcript[:120],
         "request_type": detect_request_type(transcript),
@@ -323,8 +416,13 @@ def analyze_transcript(transcript: str, metadata: dict) -> dict[str, object]:
         "top_job": top_job,
         "has_booking": has_booking,
         "manager_score": manager_score,
+        "booking_date": detect_booking_date(transcript, has_booking),
+        "parts": detect_parts(transcript),
         "comment": build_comment(transcript),
         "flags": flags,
+        "manager_issue": manager_issue,
+        "score_total": manager_score,
+        "score_max": 8,
         "greeting_score": greeting_score,
         "body_score": body_score,
         "year_score": year_score,
